@@ -47,4 +47,31 @@ This is project, my partners and I using Oracle DBMS to Database Management Syst
 |SLEEP|IN_TIME NUMBER|||
 |FUNC_CHECK_PHONGTRONG|MAPHONG_IN INT<br/>NGAYDEN_IN DATE<br/>NGAYROI_IN DATE<br/>MAPHIEU_IN INT|CHECK_PHONGTRONG NUMBER|Check room is available or not.|
 |FUNC_HOADON_TIENPHONG|MA_HD HOADONTHANHTOAN.MAHD%TYPE||Caculate room charge.|
-|FUNC_HOADON_DICHVU|MA_HD HOADONTHANHTOAN.MAHD%TYPE
+|FUNC_HOADON_DICHVU|MA_HD HOADONTHANHTOAN.MAHD%TYPE|HOADONTHANHTOAN.TIENDICHVU%TYPE|Caculate services charge.|
+|FUNC_HOADON_MONAN|MAHD HOADONTHANHTOAN.MAHD%TYPE|HOADONTHANHTOAN.TIENMONAN%TYPE|Caculate food money.|
+|FUNC_HOADON_DENBU|MAHD HOADONTHANHTOAN.MAHD%TYPE|HOADONTHANHTOAN.TIENDENBU%TYPE|Caculate compensation money.|
+|FUNC_HOADON_TIENGIAM|MAHD HOADONTHANHTOAN.MAHD%TYPE|HOADONTHANHTOAN.TIENGIAM%TYPE|Caculate discount.|
+## LOST UPDATE, NON-REPEATABLE READ, PHANTOM READ, DEADLOCK
+### LOST UPDATE
+1. Hypothetical situation
+
+    An employee updates the arrival and departure dates for a customer's reservation. For some reason the room that the employee's reservation is updating needs to be repaired, the manager updates the room status to repair and re-updates the previous reservation with an empty room of the same type. When the employee updates and commits the data, the manager also performs the update and closes, leading to the data of the previous update manager being overwritten by the data that the employee updates later and leading to errors.
+  
+2. Relational Procedures, Trigger
+    - SLEEP
+    - PRO_UPDATE_PHIEUDATTRUOC
+    - TRIG_UPDATE_TINHTRANGPHONG
+    - FUNC_RANDOM_PHONG
+    
+3. Conflicting Writes and Lost Updates in a READ COMMITTED Transaction
+
+|Session 1| Session 2|Explanation|
+| --- | --- | --- |
+|EXEC PRO_UPDATE_PHIEUDATTRUOC(87,43,20,1,'09-JULY-2020','11-JULY-2020',1,'CHƯA NHẬN');|UPDATE PHONG SET TINHTRANG='SỬA CHỮA' WHERE MAPHONG=43;|While session 1 updates the reservation ticket, session 2 updates the status for room code 43.|
+4. Causes and solutions
+    - The problem occurs: The data that the employee makes for the reservation is overwritten by the data that the manager updates later. Leads to data errors.
+    - Cause: Because the read committed isolation level is set, T2 does not realize that T1 has updated the arrival date of the reservation. T2 takes the old data and updates the reservation again.
+    - Solution: Use the statement “SET TRANSACTION ISOLATION LEVEL SERIALIZABLE ” instead of the statement “SET TRANSACTION ISOLATION LEVEL READ COMMITTED” in Session 2 when updating the reservation ticket, the statement will wait for T1 to complete, then T2 will get the data. there to update.
+### Non-repeatable read
+  1. Hypothetical situation
+  
