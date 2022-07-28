@@ -116,3 +116,17 @@ This is project, my partners and I using Oracle DBMS to Database Management Syst
     - Result: The second time reading to get the data on the combobox, the list of available rooms will still show the room with the room code 49.
 ### Deadlock
   1. Hypothetical situation
+  
+      Employee 1 executes a query for rooms information and requests a lock on the PHONG table that prevents another transaction from requesting a lock on the table. Meanwhile, the manager makes a query for the check-in list and requests a lock on the PHIEUNHANPHONG table, preventing transactions that require a lock. After performing a query for room information, the staff member extended the date for a check-in, and the manager also requested a lock to update the status of a room. Leads to a deadlock state.
+  2. Deadlock Transactions
+    
+    |Session 1|Session 2|Explaination|
+    | --- | --- | --- |
+    |SELECT P.MAPHONG,TINHTRANG,TENLOAIPHONG<br />FROM PHONG P INNER JOIN LOAIPHONG LP<br />ON P.MALOAIPHONG = LP.MALOAIPHONG FOR UPDATE;|No action.|Session 1 performs a query for rooms information and requests a lock on the PHONG Table.|
+    |No action.|SELECT * FROM PHIEUNHANPHONG G<br />FOR UPDATE;|Session 2 queries the check-in and requests a lock on the PHIEUNHANPHONG table.|
+    |No action.|UPDATE PHONG SET TINHTRANG='SUA CHUA'<br />WHERE MAPHONG = 49;|Session 2 requests a lock on the data unit MAPHONG = 49 and updates the room's status.|
+    |EXEC PRO_UPDATE_PHIEUNHANPHONG<br />(92,68,48,2,0,'07-JULY-2020','09-JULY-2020');|No action.|Session 1 performs a lock request on the data unit with MAPHIEUNHAN = 92 and extends the departure date for the check-in.|
+    3. Causes and solutions 
+        - The problem occurs: The problem occurs: Session 1 waits for Session 2 to release the lock on the PHIEUNHANPHONG data unit and Session 2 waits for Session 1 to release the lock on the PHIEUNHANPHONG data unit. As a result, the management system reported an error and canceled T3.
+        - Cause: T1 performs a query for room information and requests a lock on the PHIEUNHANPHONG data unit, T2 makes a query for the check-in information and requests a lock on the PHIEUNHANPHONG data unit. T3 performs a lock request on the data unit with MAPHONG = 49 that T1 is holding. T4 makes a lock request on the data unit with MAPHIEUNHAN = 92 that T2 is holding the lock on. Session 1 waits for Session 2 to release the lock on the PHIEUNHANPHONG data unit. Session 2 waits for Session 1 to release the lock on the WIN data unit. Leads to Deadlock status.
+        - 
