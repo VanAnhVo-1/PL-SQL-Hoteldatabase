@@ -75,3 +75,44 @@ This is project, my partners and I using Oracle DBMS to Database Management Syst
 ### Non-repeatable read
   1. Hypothetical situation
   
+      While processing the bill payment for the customer, the receptionist makes a query for the price of the dish that the customer used to calculate the money for the customer, the manager updates the price of the dish. When checking the payment invoice before delivering it to the customer, the data has changed, leading to an error.
+ 
+ 2. Relational Procedures, Triggers:
+    - PROD_BK_MONAN_THANHTIEN.
+ 3. Non-repeatable read transactions
+ 
+ |Session 1|Session 2|Explaination|
+ | --- | --- | --- |
+ |SELECT GIAMON FROM MONAN WHERE MAMON = 1| No action.| Session 1 executes the query for the price of the dish with the item code = 1.|
+ |DECLARE IN_THANHTIEN INT;<br />BEGIN<br />PROD_BK_MONAN_THANHTIEN(144,1,'07-JULY-20',2);<br />SELECT THANHTIEN INTO IN_THANHTIEN FROM BANGKE_MONAN WHERE MAHD = 144 AND MAMON = 1 AND NGAY = '07-JULY-2020';<br />DBMS_OUTPUT.PUT_LINE('THANH TIEN:' \|\| IN_THANHTIEN);<br />COMMIT;<br />END;| UPDATE MONAN SET GIAMON = 120000 WHERE MAMON = 1;|Session 1 calculates money for the list of medium dishes, then Session 2 updates the price of dishes with MAMON = 1 from 100000 --> 120000.|
+ |No action.|COMMIT;|Transaction 2 completes and terminates.|
+ |COMMIT;| No action.|Transaction 1 is done, prints the output as 240000 and ends. Results is wrong.|
+ 
+ 4. Causes and solutions
+    - The problem occurs: T1 executes the query for the item price of the dish with the item code = 1, at that moment, T2 performs the update of the dish price for the item code = 1, resulting in T1 getting the price of the dish that T2 updated. to charge for the declared dish list before the item price is updated, resulting in a deviation from the actual list price.
+    - Cause: T1 sets the read committed isolation level, so every time SELECT in the same data operation, it will read back data from the database (the database may now be changed) even though the This statement reads on the same data units.
+    - Solution: Use “SET TRANSACTION ISOLATION LEVEL SERIALIZABLE” statement instead of “SET TRANSACTION ISOLATION LEVEL READ COMMITTED” statement.
+    - Result: The cost of the dish list will be calculated with the original item price and not the updated item price by T2.
+### Phantom Read
+1. Hypothetical situation
+    A customer calls the hotel to book a room, the receptionist makes a list of available rooms with room type code = 4(SUITE), at which time another staff member adds a customer's check-in voucher that has room type code = 4 whose arrival and left dates affect arrival and left dates for customer 1. After employee 1 and customer 1 discussed to come to an agreement on the room code to reserve, employee 1 proceeded to create a reservation form and performed a query for the list of available rooms with room type code = 4 and the list available rooms is change.
+    
+2. Relational Procedures, Triggers:
+    - PRO_DANHSACH_PHONGTRONG
+3. Phantom Read Transactions
+
+|Session 1|Session 2|Explaination|
+| --- | --- | --- |
+|DECALRE PHONGTRONG INT;<br />C SYS_REFCURSOR;<br />BEGIN<br />PRO_DANHSACH_PHONGTRONG('08-JULY-2020','10-JUL-2020',4,C);<br />&nbsp;LOOP<br />&nbsp;&nbsp;FETCH C INTO PHONGTRONG;<br />&nbsp;&nbsp;EXIT WHEN C%NOTFOUND;<br />&nbsp;&nbsp;DBMS_OUTPUT.PUT_LINE('PHONG TRONG: '\|\| PHONGTRONG);<br />&nbsp;END LOOP;<br />&nbsp;CLOSE C;<br />&nbsp;COMMIT<br />END;|No action|Session 1 retrieves the list of available rooms with the arrival date '08/07/2020', the left date is '07/10/2020' with the room type code 4(Suite) to proceed with the announcement of the number of available rooms for client.<br />Results are printed: Phong Trong:47 Phong Trong: 49.|
+|No action.|No action.||
+|DECLARE PHONGTRONG INT;<br />C SYS_REFCURSOR;<br />BEGIN<br />&nbsp;PRO_DANHSACH_PHONGTRONG('08-JUL-2020','10-JUL-2020',4,C);<br />&nbsp;&nbsp;LOOP<br />&nbsp;&nbsp;&nbsp;FETCH C INTO PHONGTRONG;<br />&nbsp;&nbsp;&nbsp;EXIT WHEN C%NOTFOUND;<br />&nbsp;&nbsp;&nbsp;DBMS_OUTPUT.PUT_LINE('PHONG TRONG:' \|\| PHONGTRONG);<br />&nbsp;&nbsp;END LOOP;<br />&nbsp;&nbsp;CLOSE C;<br />&nbsp;&nbsp;COMMIT;<br />&nbsp;END;|INSERT INTO PHIEUNHANPHONG(MAPHIEU,MAPHONG,MAKH,MANV,<br />NGAYDEN,NGAYROI,SONGUOIDIKEM) VALUES (SEQ_PHIEUDAT.NEXTVAL,49,68,2,<br />'07-JUL-2020','08-JUL-2020',0);|While making a reservation for customer 1, employee 1 waits to load the list of available rooms to choose, staff 2 proceeds to add a check-in for customer 2 and finishes.|
+||COMMIT;||
+|Output Result: PHONG TRONG: 47||Session 1 executes the command and shows the current list of available rooms, employee 1 notices that the number of rooms has changed.|
+
+4. Causes and solutions 
+    - The problem occurs: When the procedure of transaction 1 executes the query for the list of available rooms corresponding to the room type code selected by the customer, the number of rooms available is 2. After discussing and performing the creation of a booking ticket in advance for customers. While waiting for the data of the available room list to be loaded into the combobox for selection, transaction 2 executes a statement to insert a check-in ticket for another customer with the same room type code as the room type code that customer 1 has selected. After completing the data upload to the combobox, the staff found that room 49 was not in the data as previously queried (Reduced the number of available rooms from 2 to 1).
+    - Cause: T1 set isolation level read commited, so the second read to load data into combobox will remove the empty room with room code 49 because room 49 has been received by another customer.
+    - Solution: Use “SET TRANSACTION ISOLATION LEVEL SERIALIZABLE” statement instead of “SET TRANSACTION ISOLATION LEVEL READ COMMITTED” statement.
+    - Result: The second time reading to get the data on the combobox, the list of available rooms will still show the room with the room code 49.
+### Deadlock
+  1. Hypothetical situation
